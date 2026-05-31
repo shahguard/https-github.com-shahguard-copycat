@@ -1,0 +1,6 @@
+{
+  "name": "Talking Pocket Pet",
+  "description": "An interactive 2D virtual pet simulator with a voice echo pitch-altering engine, metabolic decay loops, mini-games, and custom clothes/wallpapers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

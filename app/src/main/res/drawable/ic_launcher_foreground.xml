@@ -1,0 +1,129 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Left Ear Outer -->
+    <path
+        android:fillColor="#8D6E63"
+        android:pathData="M 32 50 L 22 18 L 48 34 Z" />
+
+    <!-- Left Ear Inner Peach -->
+    <path
+        android:fillColor="#FF8A80"
+        android:pathData="M 30 46 L 25 24 L 42 36 Z" />
+
+    <!-- Right Ear Outer -->
+    <path
+        android:fillColor="#8D6E63"
+        android:pathData="M 76 50 L 86 18 L 60 34 Z" />
+
+    <!-- Right Ear Inner Peach -->
+    <path
+        android:fillColor="#FF8A80"
+        android:pathData="M 78 46 L 83 24 L 66 36 Z" />
+
+    <!-- Main Head Body Round Core -->
+    <path
+        android:fillColor="#8D6E63"
+        android:pathData="M 54 30 C 70.5 30 84 43.5 84 60 C 84 76.5 70.5 90 54 90 C 37.5 90 24 76.5 24 60 C 24 43.5 37.5 30 54 30 Z" />
+
+    <!-- Cute Inner Tummy/Muzzle Peach highlights -->
+    <path
+        android:fillColor="#FFFFCC80"
+        android:pathData="M 54 62 C 60.6 62 66 67.4 66 74 C 66 80.6 60.6 86 54 86 C 47.4 86 42 80.6 42 74 C 42 67.4 47.4 62 54 62 Z" />
+
+    <!-- Left Eye Outer White -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 44 48 C 47.8 48 51 51.2 51 55 C 51 58.8 47.8 62 44 62 C 40.2 62 37 58.8 37 55 C 37 51.2 40.2 48 44 48 Z" />
+
+    <!-- Left Eye Pupil Iris Blue -->
+    <path
+        android:fillColor="#0D47A1"
+        android:pathData="M 44 51 C 46.2 51 48 52.8 48 55 C 48 57.2 46.2 59 44 59 C 41.8 59 40  57.2 40  55 C 40  52.8 41.8 51 44 51 Z" />
+
+    <!-- Left Eye Pupil Black Core -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M 44 53 C 45.1 53 46 53.9 46 55 C 46 56.1 45.1 57 44 57 C 42.9 57 42 56.1 42 55 C 42 53.9 42.9 53 44 53 Z" />
+
+    <!-- Left Eye Glint Star White -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 42.5 52 C 43.3 52 44 52.7 44 53.5 C 44 54.3 43.3 55 42.5 55 C 41.7 55 41  54.3 41  53.5 C 41  52.7 41.7 52 42.5 52 Z" />
+
+    <!-- Right Eye Outer White -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 64 48 C 67.8 48 71 51.2 71 55 C 71 58.8 67.8 62 64 62 C 60.2 62 57 58.8 57 55 C 57 51.2 60.2 48 64 48 Z" />
+
+    <!-- Right Eye Pupil Iris Blue -->
+    <path
+        android:fillColor="#0D47A1"
+        android:pathData="M 64 51 C 66.2 51 68 52.8 68 55 C 68 57.2 66.2 59 64 59 C 61.8 59 60  57.2 60  55 C 60  52.8 61.8 51 64 51 Z" />
+
+    <!-- Right Eye Pupil Black Core -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M 64 53 C 65.1 53 66 53.9 66 55 C 66 56.1 65.1 57 64 57 C 62.9 57 62 56.1 62 55 C 62 53.9 62.9 53 64 53 Z" />
+
+    <!-- Right Eye Glint Star White -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 62.5 52 C 63.3 52 64 52.7 64 53.5 C 64 54.3 63.3 55 62.5 55 C 61.7 55 61  54.3 61  53.5 C 61  52.7 61.7 52 62.5 52 Z" />
+
+    <!-- Rose Cheek Shading Left -->
+    <path
+        android:fillColor="#FF8A80"
+        android:fillAlpha="0.5"
+        android:pathData="M 34 62 C 36.2 62 38 63.8 38 66 C 38 68.2 36.2 70 34 70 C 31.8 70 30 68.2 30 66 C 30 63.8 31.8 62 34 62 Z" />
+
+    <!-- Rose Cheek Shading Right -->
+    <path
+        android:fillColor="#FF8A80"
+        android:fillAlpha="0.5"
+        android:pathData="M 74 62 C 76.2 62 78 63.8 78 66 C 78 68.2 76.2 70 74 70 C 71.8 70 70 68.2 70 66 C 70 63.8 71.8 62 74 62 Z" />
+
+    <!-- Small Dark Triangle Nose -->
+    <path
+        android:fillColor="#3E2723"
+        android:pathData="M 54 62 L 50 58 L 58 58 Z" />
+
+    <!-- Smile mouth lines -->
+    <path
+        android:strokeColor="#3E2723"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M 48 68 C 50 72 54 71 54 68 C 54 71 58 72 60 68" />
+
+    <!-- Whisker Left 1 -->
+    <path
+        android:strokeColor="#5E4E4D"
+        android:strokeWidth="1"
+        android:strokeLineCap="round"
+        android:pathData="M 28 65 L 14 62" />
+
+    <!-- Whisker Left 2 -->
+    <path
+        android:strokeColor="#5E4E4D"
+        android:strokeWidth="1"
+        android:strokeLineCap="round"
+        android:pathData="M 28 69 L 16 73" />
+
+    <!-- Whisker Right 1 -->
+    <path
+        android:strokeColor="#5E4E4D"
+        android:strokeWidth="1"
+        android:strokeLineCap="round"
+        android:pathData="M 80 65 L 94 62" />
+
+    <!-- Whisker Right 2 -->
+    <path
+        android:strokeColor="#5E4E4D"
+        android:strokeWidth="1"
+        android:strokeLineCap="round"
+        android:pathData="M 80 69 L 92 73" />
+
+</vector>
