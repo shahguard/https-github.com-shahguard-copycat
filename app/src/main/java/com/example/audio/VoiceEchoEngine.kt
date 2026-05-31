@@ -19,7 +19,10 @@ class VoiceEchoEngine {
     private val channelConfigIn = AudioFormat.CHANNEL_IN_MONO
     private val channelConfigOut = AudioFormat.CHANNEL_OUT_MONO
     private val audioFormat = AudioFormat.ENCODING_PCM_16BIT
-    private val bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfigIn, audioFormat) * 2
+    private val bufferSize = run {
+        val minSize = AudioRecord.getMinBufferSize(sampleRate, channelConfigIn, audioFormat)
+        if (minSize > 0) minSize * 2 else 4096
+    }
 
     private var audioRecord: AudioRecord? = null
     var isRecording = false
@@ -30,6 +33,10 @@ class VoiceEchoEngine {
     // Emits the current mic volume (0.0 to 1.0) during recording
     private val _amplitude = MutableStateFlow(0f)
     val amplitude: StateFlow<Float> = _amplitude
+
+    fun setAmplitude(value: Float) {
+        _amplitude.value = value.coerceIn(0f, 1f)
+    }
 
     // Captures PCM audio data
     private var recordedData = ShortArray(0)

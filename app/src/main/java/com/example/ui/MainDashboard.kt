@@ -70,9 +70,12 @@ fun MainDashboardView(viewModel: PetViewModel) {
     val apiKey by viewModel.openRouterApiKey.collectAsState()
     val model by viewModel.openRouterModel.collectAsState()
 
+    val isVoiceAgentListening by viewModel.isVoiceAgentListening.collectAsState()
+
     // Local UI states
     var typedText by remember { mutableStateOf("") }
     var showConfigDialog by remember { mutableStateOf(false) }
+    var showFeaturesMenu by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
     var shopDrawerOpen by remember { mutableStateOf(false) }
     var adsCooldown by remember { mutableStateOf(0) } // seconds cooldown for ad button
@@ -130,62 +133,7 @@ fun MainDashboardView(viewModel: PetViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .testTag("app_main_scaffold"),
-        containerColor = Color.Transparent,
-        bottomBar = {
-            // Elegant M3-style navigation pill bar
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(16.dp, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
-                tonalElevation = 8.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .windowInsetsPadding(WindowInsets.navigationBars)
-                        .padding(vertical = 12.dp, horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RoomBarPill(
-                        label = "Playroom",
-                        icon = Icons.Default.Face,
-                        isActive = activeRoom == ActiveRoom.PLAYROOM,
-                        testTag = "nav_playroom",
-                        onClick = { viewModel.changeRoom(ActiveRoom.PLAYROOM) }
-                    )
-                    RoomBarPill(
-                        label = "Kitchen",
-                        icon = Icons.Default.ShoppingCart,
-                        isActive = activeRoom == ActiveRoom.KITCHEN,
-                        testTag = "nav_kitchen",
-                        onClick = { viewModel.changeRoom(ActiveRoom.KITCHEN) }
-                    )
-                    RoomBarPill(
-                        label = "Bathroom",
-                        icon = Icons.Default.Refresh,
-                        isActive = activeRoom == ActiveRoom.BATHROOM,
-                        testTag = "nav_bathroom",
-                        onClick = { viewModel.changeRoom(ActiveRoom.BATHROOM) }
-                    )
-                    RoomBarPill(
-                        label = "Bedroom",
-                        icon = Icons.Default.Favorite,
-                        isActive = activeRoom == ActiveRoom.BEDROOM,
-                        testTag = "nav_bedroom",
-                        onClick = { viewModel.changeRoom(ActiveRoom.BEDROOM) }
-                    )
-                    RoomBarPill(
-                        label = "Arcade",
-                        icon = Icons.Default.Star,
-                        isActive = activeRoom == ActiveRoom.GAME_ROOM,
-                        testTag = "nav_arcade",
-                        onClick = { viewModel.changeRoom(ActiveRoom.GAME_ROOM) }
-                    )
-                }
-            }
-        }
+        containerColor = Color.Transparent
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -306,42 +254,7 @@ fun MainDashboardView(viewModel: PetViewModel) {
                     }
                 }
 
-                // 3. METABOLIC STATUS CONTROLLER SLIDERS (Hunger, Energy, Hygiene, Fun)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    SurvivalStateRing(
-                        label = "Foods",
-                        iconEmoji = "🍕",
-                        value = pet.hunger,
-                        testTag = "vital_hunger",
-                        onTap = { viewModel.changeRoom(ActiveRoom.KITCHEN) }
-                    )
-                    SurvivalStateRing(
-                        label = "Sleep",
-                        iconEmoji = "💤",
-                        value = pet.energy,
-                        testTag = "vital_sleep",
-                        onTap = { viewModel.changeRoom(ActiveRoom.BEDROOM) }
-                    )
-                    SurvivalStateRing(
-                        label = "Wash",
-                        iconEmoji = "🧼",
-                        value = pet.hygiene,
-                        testTag = "vital_hygiene",
-                        onTap = { viewModel.changeRoom(ActiveRoom.BATHROOM) }
-                    )
-                    SurvivalStateRing(
-                        label = "Happiness",
-                        iconEmoji = "🎈",
-                        value = pet.funLevel,
-                        testTag = "vital_fun",
-                        onTap = { viewModel.changeRoom(ActiveRoom.PLAYROOM) }
-                    )
-                }
+                // 3. METABOLIC STATUS CONTROLLER SLIDERS HIDDEN (Now inside Features Dialog to keep Buster character view spacious!)
 
                 // 4. MAIN INTERACTIVE SPACE RENDERING
                 Box(
@@ -360,17 +273,30 @@ fun MainDashboardView(viewModel: PetViewModel) {
                         )
                     } else {
                         // Core pet interactive drawing
-                        BusterCharacterView(
-                            visualState = visualState,
-                            outfitId = pet.currentOutfitId,
-                            micAmplitude = micAmp,
-                            modifier = Modifier
-                                .fillMaxSize(0.92f)
-                                .testTag("buster_character"),
-                            onPoke = { tx, ty, w, h ->
-                                viewModel.interactTouch(tx, ty, w, h)
-                            }
-                        )
+                        if (com.example.unity.UnityBridge.isUnityLibraryAvailable()) {
+                            // Render the live 3D Unity container view on device
+                            androidx.compose.ui.viewinterop.AndroidView(
+                                factory = { ctx ->
+                                    val view = com.example.unity.UnityBridge.createUnityViewInstance(ctx)
+                                    view ?: android.view.View(ctx)
+                                },
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .testTag("unity_3d_cat_view")
+                            )
+                        } else {
+                            BusterCharacterView(
+                                visualState = visualState,
+                                outfitId = pet.currentOutfitId,
+                                micAmplitude = micAmp,
+                                modifier = Modifier
+                                    .fillMaxSize(0.92f)
+                                    .testTag("buster_character"),
+                                onPoke = { tx, ty, w, h ->
+                                    viewModel.interactTouch(tx, ty, w, h)
+                                }
+                            )
+                        }
 
                         // Eating food animation indicator overlay
                         eatingEmoji?.let { emoji ->
@@ -706,16 +632,51 @@ fun MainDashboardView(viewModel: PetViewModel) {
                                                 }
                                                 
                                                 Spacer(modifier = Modifier.height(4.dp))
-                                                
-                                                // Message Send row
+                                                   // Message Send row
                                                 Row(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
+                                                    // Hands-Free AI Voice Agent Mic Button
+                                                    val voiceIcon = if (isVoiceAgentListening) Icons.Default.Stop else Icons.Default.Mic
+                                                    val voiceBg = if (isVoiceAgentListening) Color(0xFFE53935) else MaterialTheme.colorScheme.secondary
+                                                    IconButton(
+                                                        onClick = {
+                                                            if (!hasMicPermission) {
+                                                                launcher.launch(Manifest.permission.RECORD_AUDIO)
+                                                            } else {
+                                                                if (!isVoiceAgentListening) {
+                                                                    viewModel.startVoiceAgentListening(context)
+                                                                } else {
+                                                                    viewModel.stopVoiceAgentListening()
+                                                                }
+                                                            }
+                                                        },
+                                                        modifier = Modifier
+                                                            .size(38.dp)
+                                                            .background(voiceBg, CircleShape)
+                                                            .testTag("ai_voice_agent_button")
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = voiceIcon,
+                                                            contentDescription = "Voice Agent Mic Trigger",
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(16.dp)
+                                                        )
+                                                    }
+
+                                                    Spacer(modifier = Modifier.width(6.dp))
+
                                                     OutlinedTextField(
                                                         value = typedText,
                                                         onValueChange = { typedText = it },
-                                                        placeholder = { Text("Ask Buster to sing, dance, or chat...", color = Color.White.copy(alpha = 0.55f), fontSize = 11.sp) },
+                                                        placeholder = {
+                                                            Text(
+                                                                text = if (isVoiceAgentListening) "Listening... talk now!" else "Ask or speak to Buster...",
+                                                                color = Color.White.copy(alpha = 0.55f),
+                                                                fontSize = 11.sp
+                                                            )
+                                                        },
                                                         textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 12.sp),
                                                         modifier = Modifier
                                                             .weight(1f)
@@ -889,61 +850,7 @@ fun MainDashboardView(viewModel: PetViewModel) {
                     }
                 }
 
-                // 6. EXTRA REWARDING DISCRETE AD & WARDROBE CONTROLS ROW
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Reward-based voluntarily discrete ad-block Simulator
-                    Button(
-                        onClick = {
-                            if (adsCooldown == 0) {
-                                viewModel.addXp(20)
-                                scope.launch {
-                                    viewModel.buyShopItem(ShopItem("coins", "Ad Prize", -100, isOutfit = true))
-                                }
-                                adsCooldown = 25 // 25s cooldown to prevent abusive click spam
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (adsCooldown > 0) Color.Gray else Color(0xFFFF5252)
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = adsCooldown == 0,
-                        modifier = Modifier.weight(1f).padding(end = 10.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.PlayCircle, contentDescription = "Simulate Ad")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (adsCooldown > 0) "Ad Ready in ${adsCooldown}s" else "Bonus +100 Coins (Ad)",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    // Wardrobe customizing button
-                    Button(
-                        onClick = { shopDrawerOpen = !shopDrawerOpen },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .weight(0.8f)
-                            .testTag("wardrobe_toggle")
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.ShoppingCart, contentDescription = "Wardrobe Toggle")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "Wardrobe", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
+                // Extra controls (vitals, ad rewards, wardrobe) are now organized cleanly inside the "Main Features" dialogue!
             }
 
             // 7. LEVEL-UPS & GAME TICKERS TOAST NOTIFICATION FLOATER
@@ -1188,6 +1095,280 @@ fun MainDashboardView(viewModel: PetViewModel) {
                                     }
                                 ) {
                                     Text("Save Key")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 10. FLOATING MAIN FEATURES PILL DRAWER (Always floating on the middle-right margin)
+            Card(
+                shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .clickable { showFeaturesMenu = true }
+                    .testTag("floating_features_pill")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text("🐾", fontSize = 18.sp)
+                    Text(
+                        text = "Main Features",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+
+            // 11. MAIN FEATURES MENU DIALOG (Room switches + Health Vitals + Extras)
+            if (showFeaturesMenu) {
+                androidx.compose.ui.window.Dialog(onDismissRequest = { showFeaturesMenu = false }) {
+                    Surface(
+                        shape = RoundedCornerShape(24.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 10.dp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .testTag("features_menu_dialog")
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(20.dp)
+                                .fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "🐾 Actions & Vitals",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                IconButton(onClick = { showFeaturesMenu = false }) {
+                                    Icon(imageVector = Icons.Default.Close, contentDescription = "Close Menu")
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Room Selector Shortcuts
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "📍 Switch Active Room",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.align(Alignment.Start)
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceAround,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RoomBarPill(
+                                            label = "Playroom",
+                                            icon = Icons.Default.Face,
+                                            isActive = activeRoom == ActiveRoom.PLAYROOM,
+                                            testTag = "nav_playroom_dialog",
+                                            onClick = {
+                                                viewModel.changeRoom(ActiveRoom.PLAYROOM)
+                                                showFeaturesMenu = false
+                                            }
+                                        )
+                                        RoomBarPill(
+                                            label = "Kitchen",
+                                            icon = Icons.Default.ShoppingCart,
+                                            isActive = activeRoom == ActiveRoom.KITCHEN,
+                                            testTag = "nav_kitchen_dialog",
+                                            onClick = {
+                                                viewModel.changeRoom(ActiveRoom.KITCHEN)
+                                                showFeaturesMenu = false
+                                            }
+                                        )
+                                        RoomBarPill(
+                                            label = "Bathroom",
+                                            icon = Icons.Default.Refresh,
+                                            isActive = activeRoom == ActiveRoom.BATHROOM,
+                                            testTag = "nav_bathroom_dialog",
+                                            onClick = {
+                                                viewModel.changeRoom(ActiveRoom.BATHROOM)
+                                                showFeaturesMenu = false
+                                            }
+                                        )
+                                        RoomBarPill(
+                                            label = "Bedroom",
+                                            icon = Icons.Default.Favorite,
+                                            isActive = activeRoom == ActiveRoom.BEDROOM,
+                                            testTag = "nav_bedroom_dialog",
+                                            onClick = {
+                                                viewModel.changeRoom(ActiveRoom.BEDROOM)
+                                                showFeaturesMenu = false
+                                            }
+                                        )
+                                        RoomBarPill(
+                                            label = "Arcade",
+                                            icon = Icons.Default.Star,
+                                            isActive = activeRoom == ActiveRoom.GAME_ROOM,
+                                            testTag = "nav_arcade_dialog",
+                                            onClick = {
+                                                viewModel.changeRoom(ActiveRoom.GAME_ROOM)
+                                                showFeaturesMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Health vitals indicators
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.25f)
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "📊 Buster Stats & Status",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier.align(Alignment.Start)
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        SurvivalStateRing(
+                                            label = "Foods",
+                                            iconEmoji = "🍕",
+                                            value = pet.hunger,
+                                            testTag = "vital_hunger_dialog",
+                                            onTap = {
+                                                viewModel.changeRoom(ActiveRoom.KITCHEN)
+                                                showFeaturesMenu = false
+                                            }
+                                        )
+                                        SurvivalStateRing(
+                                            label = "Sleep",
+                                            iconEmoji = "💤",
+                                            value = pet.energy,
+                                            testTag = "vital_sleep_dialog",
+                                            onTap = {
+                                                viewModel.changeRoom(ActiveRoom.BEDROOM)
+                                                showFeaturesMenu = false
+                                            }
+                                        )
+                                        SurvivalStateRing(
+                                            label = "Wash",
+                                            iconEmoji = "🧼",
+                                            value = pet.hygiene,
+                                            testTag = "vital_hygiene_dialog",
+                                            onTap = {
+                                                viewModel.changeRoom(ActiveRoom.BATHROOM)
+                                                showFeaturesMenu = false
+                                            }
+                                        )
+                                        SurvivalStateRing(
+                                            label = "Happiness",
+                                            iconEmoji = "🎈",
+                                            value = pet.funLevel,
+                                            testTag = "vital_fun_dialog",
+                                            onTap = {
+                                                viewModel.changeRoom(ActiveRoom.PLAYROOM)
+                                                showFeaturesMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            // Wardrobe list and free coins ad button
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Button(
+                                    onClick = {
+                                        if (adsCooldown == 0) {
+                                            viewModel.addXp(20)
+                                            scope.launch {
+                                                viewModel.buyShopItem(ShopItem("coins", "Ad Prize", -100, isOutfit = true))
+                                            }
+                                            adsCooldown = 25
+                                            showFeaturesMenu = false
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (adsCooldown > 0) Color.Gray else Color(0xFFFF5252)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    enabled = adsCooldown == 0,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = if (adsCooldown > 0) "Ad (${adsCooldown}s)" else "🪙 +100 Coins (Ad)",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                Button(
+                                    onClick = {
+                                        shopDrawerOpen = true
+                                        showFeaturesMenu = false
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondary
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.weight(0.9f)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.ShoppingCart,
+                                            contentDescription = "Wardrobe Toggle",
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(text = "Wardrobe", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
                         }

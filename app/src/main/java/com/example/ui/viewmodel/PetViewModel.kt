@@ -19,8 +19,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.FlowPreview
 import java.util.Locale
 
 enum class ChatRole {
@@ -188,6 +190,33 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
             repository.petStatsFlow.collectLatest { entity ->
                 _petStats.value = entity
             }
+        }
+
+        // Collect visual state changes to notify 3D Unity Character View with High-Efficiency Thread Boundary Isolation
+        @OptIn(FlowPreview::class)
+        viewModelScope.launch {
+            _visualState
+                .debounce(200L)
+                .collect { state ->
+                    val actionTag = when (state) {
+                        PetVisualState.HAPPY_DANCE -> "dance"
+                        PetVisualState.SPEAKING -> "sing"
+                        PetVisualState.HEARING -> "hear"
+                        PetVisualState.EATING -> "eat"
+                        PetVisualState.SLEEPING -> "sleep"
+                        PetVisualState.BATHING -> "shower"
+                        PetVisualState.DIZZY -> "dizzy"
+                        else -> "idle"
+                    }
+                    // Safely dispatch the message on background worker thread
+                    withContext(Dispatchers.Default) {
+                        try {
+                            com.example.unity.UnityBridge.sendActionTo3DCat(actionTag)
+                        } catch (t: Throwable) {
+                            Log.e(TAG, "Dynamic Unity message dropped: $actionTag", t)
+                        }
+                    }
+                }
         }
 
         // Initialize and calculate passive offline decay
@@ -542,6 +571,8 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     fun startListeningRecording() {
         if (voiceEngine.isRecording || voiceEngine.isPlaying) return
         _visualState.value = PetVisualState.HEARING
+        // Mute Unity background audio to prevent microphone stream leak feedback
+        com.example.unity.UnityBridge.setUnityAudioMuted(true)
         
         voiceEngine.startRecording { audioData ->
             if (audioData.isNotEmpty()) {
@@ -549,12 +580,14 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
                 repeatWithSelectedFilter(audioData)
             } else {
                 _visualState.value = PetVisualState.IDLE
+                com.example.unity.UnityBridge.setUnityAudioMuted(false)
             }
         }
     }
 
     fun stopListeningRecording() {
         voiceEngine.stopRecording()
+        com.example.unity.UnityBridge.setUnityAudioMuted(false)
     }
 
     private fun repeatWithSelectedFilter(audioData: ShortArray) {
@@ -570,6 +603,8 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
 
         voiceEngine.playWithFilter(audioData, pitchFactor = factor, isRobot = isRobot) {
             _visualState.value = PetVisualState.IDLE
+            // Restore Unity game engine audio loop
+            com.example.unity.UnityBridge.setUnityAudioMuted(false)
             // Reward for vocal playing
             viewModelScope.launch {
                 addXp(8)
@@ -750,6 +785,10 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
         voiceEngine.stopRecording()
         voiceEngine.stopPlayback()
         try {
+            speechRecognizer?.destroy()
+        } catch (e: Exception) {}
+        speechRecognizer = null
+        try {
             tts?.stop()
             tts?.shutdown()
         } catch (e: Exception) {
@@ -892,5 +931,105 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
         _openRouterModel.value = model.trim()
         _aiModeEnabled.value = modeEnabled
         showNotification("Buster's AI Brain config saved!")
+    }
+
+    // ──────────────────────────────────────────────
+    // HANDS-FREE AI VOICE AGENT COMPANION LOOP
+    // ──────────────────────────────────────────────
+    private var speechRecognizer: android.speech.SpeechRecognizer? = null
+    private val _isVoiceAgentListening = MutableStateFlow(false)
+    val isVoiceAgentListening: StateFlow<Boolean> = _isVoiceAgentListening.asStateFlow()
+
+    fun startVoiceAgentListening(context: android.content.Context) {
+        if (_isVoiceAgentListening.value) return
+        
+        // Ensure standard recordings/playbacks are stopped so mic can be acquired cleanly
+        voiceEngine.stopRecording()
+        voiceEngine.stopPlayback()
+        stopSpeaking()
+
+        val intent = android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, java.util.Locale.getDefault())
+            putExtra(android.speech.RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        }
+
+        viewModelScope.launch(Dispatchers.Main) {
+            try {
+                if (android.speech.SpeechRecognizer.isRecognitionAvailable(context)) {
+                    _isVoiceAgentListening.value = true
+                    _visualState.value = PetVisualState.HEARING
+                    com.example.unity.UnityBridge.setUnityAudioMuted(true)
+
+                    speechRecognizer = android.speech.SpeechRecognizer.createSpeechRecognizer(context).apply {
+                        setRecognitionListener(object : android.speech.RecognitionListener {
+                            override fun onReadyForSpeech(params: android.os.Bundle?) {
+                                Log.d(TAG, "Voice Agent SpeechRecognizer is target-ready")
+                            }
+                            override fun onBeginningOfSpeech() {}
+                            override fun onRmsChanged(rmsdB: Float) {
+                                // Maps RMS vocal sound volume to character amplitude (0f to 1f) for real-time talk wobble
+                                val normalized = (rmsdB / 14f).coerceIn(0f, 1f)
+                                voiceEngine.setAmplitude(normalized)
+                            }
+                            override fun onBufferReceived(buffer: ByteArray?) {}
+                            override fun onEndOfSpeech() {
+                                _isVoiceAgentListening.value = false
+                                voiceEngine.setAmplitude(0f)
+                            }
+                            override fun onError(error: Int) {
+                                Log.w(TAG, "Voice Agent SpeechRecognizer error: $error")
+                                _isVoiceAgentListening.value = false
+                                _visualState.value = PetVisualState.IDLE
+                                com.example.unity.UnityBridge.setUnityAudioMuted(false)
+                                val msg = when (error) {
+                                    android.speech.SpeechRecognizer.ERROR_NO_MATCH -> "I couldn't hear what you said!"
+                                    android.speech.SpeechRecognizer.ERROR_NETWORK, android.speech.SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network error with voice agent recognition."
+                                    else -> "Speech recognizer is initializing or busy. Try typing instead!"
+                                }
+                                showNotification(msg)
+                            }
+                            override fun onResults(results: android.os.Bundle?) {
+                                val matches = results?.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION)
+                                if (!matches.isNullOrEmpty()) {
+                                    val spokenText = matches[0]
+                                    Log.d(TAG, "Voice Agent recognized user words: $spokenText")
+                                    sendMessageToBuster(spokenText)
+                                } else {
+                                    _visualState.value = PetVisualState.IDLE
+                                    com.example.unity.UnityBridge.setUnityAudioMuted(false)
+                                }
+                                _isVoiceAgentListening.value = false
+                            }
+                            override fun onPartialResults(partialResults: android.os.Bundle?) {}
+                            override fun onEvent(eventType: Int, params: android.os.Bundle?) {}
+                        })
+                        startListening(intent)
+                    }
+                } else {
+                    showNotification("Speech synthesis/recognition is not active on this device.")
+                }
+            } catch (t: Throwable) {
+                Log.e(TAG, "SpeechRecognizer helper failed to start", t)
+                _isVoiceAgentListening.value = false
+                _visualState.value = PetVisualState.IDLE
+                com.example.unity.UnityBridge.setUnityAudioMuted(false)
+            }
+        }
+    }
+
+    fun stopVoiceAgentListening() {
+        viewModelScope.launch(Dispatchers.Main) {
+            try {
+                speechRecognizer?.stopListening()
+                speechRecognizer?.destroy()
+            } catch (t: Throwable) {
+                // ignore
+            }
+            speechRecognizer = null
+            _isVoiceAgentListening.value = false
+            _visualState.value = PetVisualState.IDLE
+            com.example.unity.UnityBridge.setUnityAudioMuted(false)
+        }
     }
 }
